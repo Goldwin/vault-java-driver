@@ -288,6 +288,127 @@ public class Auth {
         }
     }
 
+    /**
+     * <p>Basic login operation to authenticate to an aws-ec2 backend.  Example usage:</p>
+     *
+     * <blockquote>
+     * <pre>{@code
+     * final AuthResponse response = vault.auth().loginByAwsEC2("pkcs7String","nonceString");
+     *
+     * final String token = response.getAuthClientToken();
+     * }</pre>
+     * </blockquote>
+     *
+     * @param pkcs7 the pkcs7 of ec2 instances
+     * @param nonce for the authentication
+     * @return The auth token
+     * @throws VaultException If any error occurs, or unexpected response received from Vault
+     */
+    public AuthResponse loginByAwsEC2(final String pkcs7, String nonce) throws VaultException{
+        int retryCount = 0;
+        while (true) {
+            try {
+                // HTTP request to Vault
+                final String requestJson = Json.object().add("pkcs7", pkcs7).add("nonce",nonce).toString();
+                final RestResponse restResponse = new Rest()//NOPMD
+                    .url(config.getAddress() + "/v1/auth/aws-ec2/login")
+                    .body(requestJson.getBytes("UTF-8"))
+                    .connectTimeoutSeconds(config.getOpenTimeout())
+                    .readTimeoutSeconds(config.getReadTimeout())
+                    .sslPemUTF8(config.getSslPemUTF8())
+                    .sslVerification(config.isSslVerify() != null ? config.isSslVerify() : null)
+                    .post();
+
+                // Validate restResponse
+                if (restResponse.getStatus() != 200) {
+                    throw new VaultException("Vault responded with HTTP status code: " + restResponse.getStatus(), restResponse.getStatus());
+                }
+                final String mimeType = restResponse.getMimeType() == null ? "null" : restResponse.getMimeType();
+                if (!mimeType.equals("application/json")) {
+                    throw new VaultException("Vault responded with MIME type: " + mimeType, restResponse.getStatus());
+                }
+                return buildAuthResponse(restResponse, retryCount);
+            } catch (Exception e) {
+                // If there are retries to perform, then pause for the configured interval and then execute the loop again...
+                if (retryCount < config.getMaxRetries()) {
+                    retryCount++;
+                    try {
+                        final int retryIntervalMilliseconds = config.getRetryIntervalMilliseconds();
+                        Thread.sleep(retryIntervalMilliseconds);
+                    } catch (InterruptedException e1) {
+                        e1.printStackTrace();
+                    }
+                } else if (e instanceof VaultException) {
+                    // ... otherwise, give up.
+                    throw (VaultException) e;
+                } else {
+                    throw new VaultException(e);
+                }
+            }
+        }
+    }
+
+    /**
+     * <p>Basic login operation to authenticate to an aws-ec2 backend.  Example usage:</p>
+     *
+     * <blockquote>
+     * <pre>{@code
+     * final AuthResponse response = vault.auth().loginByAwsEC2("dev-role","pkcs7String","nonceString");
+     *
+     * final String token = response.getAuthClientToken();
+     * }</pre>
+     * </blockquote>
+     *
+     * @param role role to be used with this authentication
+     * @param pkcs7 the pkcs7 of ec2 instances
+     * @param nonce for the authentication
+     * @return The auth token
+     * @throws VaultException If any error occurs, or unexpected response received from Vault
+     */
+    public AuthResponse loginByAwsEC2(final String role, final String pkcs7, final String nonce) throws VaultException{
+        int retryCount = 0;
+        while (true) {
+            try {
+                // HTTP request to Vault
+                final String requestJson = Json.object().add("role",role).add("pkcs7", pkcs7).add("nonce",nonce).toString();
+                final RestResponse restResponse = new Rest()//NOPMD
+                    .url(config.getAddress() + "/v1/auth/aws-ec2/login")
+                    .body(requestJson.getBytes("UTF-8"))
+                    .connectTimeoutSeconds(config.getOpenTimeout())
+                    .readTimeoutSeconds(config.getReadTimeout())
+                    .sslPemUTF8(config.getSslPemUTF8())
+                    .sslVerification(config.isSslVerify() != null ? config.isSslVerify() : null)
+                    .post();
+
+                // Validate restResponse
+                if (restResponse.getStatus() != 200) {
+                    throw new VaultException("Vault responded with HTTP status code: " + restResponse.getStatus(), restResponse.getStatus());
+                }
+                final String mimeType = restResponse.getMimeType() == null ? "null" : restResponse.getMimeType();
+                if (!mimeType.equals("application/json")) {
+                    throw new VaultException("Vault responded with MIME type: " + mimeType, restResponse.getStatus());
+                }
+                return buildAuthResponse(restResponse, retryCount);
+            } catch (Exception e) {
+                // If there are retries to perform, then pause for the configured interval and then execute the loop again...
+                if (retryCount < config.getMaxRetries()) {
+                    retryCount++;
+                    try {
+                        final int retryIntervalMilliseconds = config.getRetryIntervalMilliseconds();
+                        Thread.sleep(retryIntervalMilliseconds);
+                    } catch (InterruptedException e1) {
+                        e1.printStackTrace();
+                    }
+                } else if (e instanceof VaultException) {
+                    // ... otherwise, give up.
+                    throw (VaultException) e;
+                } else {
+                    throw new VaultException(e);
+                }
+            }
+        }
+    }
+
      /**
      * <p>Basic login operation to authenticate to an github backend.  Example usage:</p>
      *
